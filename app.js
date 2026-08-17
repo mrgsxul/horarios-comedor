@@ -15,6 +15,7 @@ const LINEAS = [
 ];
 
 let asignaciones = {};
+let imagenGenerada = null; // Guardar la imagen generada
 
 // ============ INICIO ============
 document.addEventListener('DOMContentLoaded', iniciar);
@@ -250,23 +251,172 @@ function barajarLinea(linea) {
     dibujarTabla();
 }
 
-// ============ EXPORTAR ============
-async function exportarPDF() {
+// ============ VER IMAGEN ============
+async function verImagen() {
     try {
-        document.body.classList.add('is-exporting');
+        // Mostrar loading
+        const boton = event.target;
+        boton.textContent = '⏳ Generando...';
+        boton.disabled = true;
         
-        const elemento = document.getElementById('zona-impresion');
+        // Crear una copia de la tabla para la exportación
+        const elementoOriginal = document.getElementById('zona-impresion');
         
-        // Configuración especial para iOS
-        const canvas = await html2canvas(elemento, {
+        // Clonar el elemento para manipularlo sin afectar la vista
+        const clon = elementoOriginal.cloneNode(true);
+        clon.style.position = 'absolute';
+        clon.style.left = '-9999px';
+        clon.style.top = '0';
+        clon.style.width = '1200px'; // Ancho fijo para que se vea completa
+        clon.style.backgroundColor = 'white';
+        document.body.appendChild(clon);
+        
+        // Quitar scroll del contenedor en el clon
+        const contenedoresScroll = clon.querySelectorAll('.tabla-scroll');
+        contenedoresScroll.forEach(cont => {
+            cont.style.overflow = 'visible';
+        });
+        
+        // Quitar estilos de select en el clon
+        const selects = clon.querySelectorAll('.celda-select, .select-fijo');
+        selects.forEach(select => {
+            select.style.border = 'none';
+            select.style.background = 'transparent';
+            select.style.webkitAppearance = 'none';
+            select.style.appearance = 'none';
+            select.style.pointerEvents = 'none';
+        });
+        
+        // Quitar botones de acción en el clon
+        const botones = clon.querySelectorAll('.btn-accion, .no-print');
+        botones.forEach(btn => btn.remove());
+        
+        // Generar imagen del clon
+        const canvas = await html2canvas(clon, {
             scale: 2,
             backgroundColor: '#ffffff',
             useCORS: true,
-            allowTaint: true,
             logging: false,
-            windowWidth: elemento.scrollWidth,
-            windowHeight: elemento.scrollHeight
+            width: 1200,
+            height: clon.scrollHeight
         });
+        
+        // Eliminar el clon
+        document.body.removeChild(clon);
+        
+        // Guardar imagen generada
+        imagenGenerada = canvas.toDataURL('image/png');
+        
+        // Mostrar en modal
+        document.getElementById('imagen-preview').src = imagenGenerada;
+        document.getElementById('modal-imagen').style.display = 'flex';
+        
+        // Restaurar botón
+        boton.textContent = '👁️ Ver Imagen';
+        boton.disabled = false;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al generar la imagen. Intenta de nuevo.');
+        
+        // Restaurar botón
+        if (event && event.target) {
+            event.target.textContent = '👁️ Ver Imagen';
+            event.target.disabled = false;
+        }
+    }
+}
+
+// ============ CERRAR MODAL ============
+function cerrarModal() {
+    document.getElementById('modal-imagen').style.display = 'none';
+    imagenGenerada = null;
+}
+
+// ============ GUARDAR IMAGEN ============
+async function guardarImagen() {
+    if (!imagenGenerada) {
+        alert('Primero genera la imagen');
+        return;
+    }
+    
+    try {
+        const semana = document.getElementById('semana').value || 'semana';
+        const turno = document.getElementById('turno').value || 'turno';
+        const nombreArchivo = `horarios_${semana}_${turno}.png`.replace(/\s+/g, '_');
+        
+        // Convertir dataURL a blob
+        const response = await fetch(imagenGenerada);
+        const blob = await response.blob();
+        
+        // Verificar si es iOS
+        const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (esIOS) {
+            // En iOS, abrir en nueva pestaña
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            
+            // Mostrar instrucciones
+            alert('Mantén presionada la imagen para guardarla en tu galería');
+            
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } else {
+            // En Android y otros, descargar directamente
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = nombreArchivo;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Mostrar confirmación
+            alert('✅ Imagen guardada en tu galería');
+        }
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar la imagen');
+    }
+}
+
+// ============ EXPORTAR PDF ============
+async function exportarPDF() {
+    try {
+        // Crear clon para PDF
+        const elementoOriginal = document.getElementById('zona-impresion');
+        const clon = elementoOriginal.cloneNode(true);
+        clon.style.position = 'absolute';
+        clon.style.left = '-9999px';
+        clon.style.width = '1200px';
+        clon.style.backgroundColor = 'white';
+        document.body.appendChild(clon);
+        
+        // Quitar elementos interactivos
+        const contenedoresScroll = clon.querySelectorAll('.tabla-scroll');
+        contenedoresScroll.forEach(cont => {
+            cont.style.overflow = 'visible';
+        });
+        
+        const selects = clon.querySelectorAll('.celda-select, .select-fijo');
+        selects.forEach(select => {
+            select.style.border = 'none';
+            select.style.background = 'transparent';
+            select.style.pointerEvents = 'none';
+        });
+        
+        const botones = clon.querySelectorAll('.btn-accion, .no-print');
+        botones.forEach(btn => btn.remove());
+        
+        const canvas = await html2canvas(clon, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            width: 1200,
+            height: clon.scrollHeight
+        });
+        
+        document.body.removeChild(clon);
         
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('landscape', 'mm', 'letter');
@@ -278,68 +428,9 @@ async function exportarPDF() {
         pdf.addImage(imgData, 'JPEG', 5, 5, ancho, alto);
         pdf.save(`horarios_${Date.now()}.pdf`);
         
-        document.body.classList.remove('is-exporting');
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al generar PDF. Intenta de nuevo.');
-        document.body.classList.remove('is-exporting');
-    }
-}
-
-async function exportarImagen() {
-    try {
-        document.body.classList.add('is-exporting');
-        
-        const elemento = document.getElementById('zona-impresion');
-        
-        // Configuración mejorada para iPhone
-        const canvas = await html2canvas(elemento, {
-            scale: 2,
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            windowWidth: elemento.scrollWidth,
-            windowHeight: elemento.scrollHeight,
-            onclone: (documento) => {
-                // Asegurar que la tabla se vea completa
-                const tablas = documento.querySelectorAll('.tabla-scroll');
-                tablas.forEach(tabla => {
-                    tabla.style.overflow = 'visible';
-                });
-                
-                const tablaPrincipal = documento.querySelector('.tabla-horarios');
-                if (tablaPrincipal) {
-                    tablaPrincipal.style.minWidth = 'auto';
-                    tablaPrincipal.style.width = '100%';
-                }
-            }
-        });
-        
-        // Crear blob para mejor compatibilidad
-        canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `horarios_${Date.now()}.png`;
-            
-            // Para iOS Safari
-            if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
-                // Abrir en nueva pestaña
-                window.open(url, '_blank');
-            } else {
-                // Descarga normal
-                link.click();
-            }
-            
-            setTimeout(() => URL.revokeObjectURL(url), 100);
-        });
-        
-        document.body.classList.remove('is-exporting');
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al generar imagen. Intenta de nuevo.');
-        document.body.classList.remove('is-exporting');
+        alert('Error al generar PDF');
     }
 }
 
@@ -376,4 +467,11 @@ document.getElementById('semana').addEventListener('change', () => {
 document.getElementById('turno').addEventListener('change', () => {
     actualizarTitulo();
     guardar();
+});
+
+// Cerrar modal al hacer click fuera
+document.getElementById('modal-imagen').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        cerrarModal();
+    }
 });

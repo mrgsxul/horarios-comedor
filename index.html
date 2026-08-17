@@ -30,12 +30,12 @@
         
         <div class="flex flex-wrap gap-2">
             <button onclick="generarAleatorio()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">🎲 Barajar</button>
+            <button onclick="verImagen()" class="bg-green-600 text-white px-4 py-2 rounded text-sm">👁️ Ver Imagen</button>
             <button onclick="exportarPDF()" class="bg-red-600 text-white px-4 py-2 rounded text-sm">📄 PDF</button>
-            <button onclick="exportarImagen()" class="bg-green-600 text-white px-4 py-2 rounded text-sm">📲 PNG</button>
         </div>
     </div>
 
-    <!-- Horario - ENVOLTURA CON SCROLL -->
+    <!-- Horario -->
     <div id="zona-impresion" class="bg-white p-4 md:p-6 rounded-lg shadow">
         <h1 id="titulo" class="text-xl md:text-2xl font-bold text-center mb-4">Horarios de Comedor</h1>
         
@@ -66,6 +66,24 @@
                     <tr><td class="p-2 font-bold">4</td><td class="p-2">10:55 - 11:25</td><td class="p-2">18:55 - 19:25</td><td class="p-2">01:55 - 02:25</td></tr>
                     <tr><td class="p-2 font-bold">5</td><td class="p-2">11:30 - 12:00</td><td class="p-2">19:30 - 20:00</td><td class="p-2">02:30 - 03:00</td></tr>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA VER IMAGEN -->
+    <div id="modal-imagen" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-bold">Vista previa de la imagen</h3>
+                <button onclick="cerrarModal()" class="btn-cerrar">✕</button>
+            </div>
+            <div class="modal-body">
+                <img id="imagen-preview" class="w-full h-auto">
+            </div>
+            <div class="modal-footer">
+                <button onclick="guardarImagen()" class="bg-green-600 text-white px-6 py-2 rounded font-bold">
+                    💾 Guardar en Galería
+                </button>
             </div>
         </div>
     </div>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horarios Comedor</title>
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Librerías -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <!-- Panel de control -->
+    <div class="bg-white p-4 rounded-lg shadow mb-4 no-print">
+        <div class="grid grid-cols-4 gap-3 mb-3">
+            <select id="anio" class="border p-2 rounded"></select>
+            <select id="mes" class="border p-2 rounded"></select>
+            <select id="semana" class="border p-2 rounded font-bold"></select>
+            <select id="turno" class="border p-2 rounded">
+                <option>1er Turno</option>
+                <option>2do Turno</option>
+                <option>3er Turno</option>
+            </select>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="generarAleatorio()" class="bg-blue-600 text-white px-4 py-2 rounded">🎲 Barajar</button>
+            <button onclick="exportarPDF()" class="bg-red-600 text-white px-4 py-2 rounded">📄 PDF</button>
+            <button onclick="exportarImagen()" class="bg-green-600 text-white px-4 py-2 rounded">📲 PNG</button>
+        </div>
+    </div>
+
+    <!-- Horario -->
+    <div id="zona-impresion" class="bg-white p-6 rounded-lg shadow">
+        <h1 id="titulo" class="text-2xl font-bold text-center mb-4">Horarios de Comedor</h1>
+        
+        <table class="w-full border-collapse border text-center">
+            <thead>
+                <tr id="cabecera"></tr>
+            </thead>
+            <tbody id="cuerpo"></tbody>
+        </table>
+
+        <!-- Referencia -->
+        <div class="mt-6">
+            <h2 class="text-sm font-bold bg-gray-800 text-white px-3 py-1 inline-block rounded">Referencia</h2>
+            <table class="w-full border-collapse border text-center text-sm mt-2">
+                <tr class="bg-gray-100">
+                    <th class="border p-1">N°</th>
+                    <th class="border p-1">1er Turno</th>
+                    <th class="border p-1">2do Turno</th>
+                    <th class="border p-1">3er Turno</th>
+                </tr>
+                <tr><td class="border p-1 font-bold">1</td><td class="border p-1">09:10 - 09:40</td><td class="border p-1">17:10 - 17:40</td><td class="border p-1">00:10 - 00:40</td></tr>
+                <tr><td class="border p-1 font-bold">2</td><td class="border p-1">09:45 - 10:15</td><td class="border p-1">17:45 - 18:15</td><td class="border p-1">00:45 - 01:15</td></tr>
+                <tr><td class="border p-1 font-bold">3</td><td class="border p-1">10:20 - 10:50</td><td class="border p-1">18:20 - 18:50</td><td class="border p-1">01:20 - 01:50</td></tr>
+                <tr><td class="border p-1 font-bold">4</td><td class="border p-1">10:55 - 11:25</td><td class="border p-1">18:55 - 19:25</td><td class="border p-1">01:55 - 02:25</td></tr>
+                <tr><td class="border p-1 font-bold">5</td><td class="border p-1">11:30 - 12:00</td><td class="border p-1">19:30 - 20:00</td><td class="border p-1">02:30 - 03:00</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

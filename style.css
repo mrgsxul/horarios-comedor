@@ -1,0 +1,56 @@
+/* Selectores de horario */
+select {
+    cursor: pointer;
+}
+
+.celda-select {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    border: none;
+    background: transparent;
+    padding: 8px;
+}
+
+.celda-select:focus {
+    color: #2563eb;
+    outline: none;
+}
+
+/* Tabla */
+table {
+    border: 2px solid #9ca3af;
+}
+
+th, td {
+    border: 1px solid #9ca3af;
+}
+
+/* Estados de exportación */
+.is-exporting .no-print {
+    display: none !important;
+}
+
+.is-exporting .celda-select {
+    color: black !important;
+}
+
+/* Líneas bloqueadas */
+.bloqueada {
+    background-color: #fee2e2;
+}
+
+/* Botones de acción en cabecera */
+.btn-accion {
+    font-size: 1.25rem;
+    transition: transform 0.2s;
+}
+
+.btn-accion:hover {
+    transform: scale(1.1);
+}
+
+.btn-accion:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}

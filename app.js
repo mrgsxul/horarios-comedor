@@ -2,7 +2,6 @@
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const NUMEROS = [1, 2, 3, 4, 5];
 
-// Líneas: nombre, bloqueada, valor fijo
 const LINEAS = [
     { nombre: '745', bloqueada: true, fijo: 1 },
     { nombre: 'Carga', bloqueada: true, fijo: 2 },
@@ -15,7 +14,7 @@ const LINEAS = [
     { nombre: '763', bloqueada: false, fijo: 4 }
 ];
 
-let asignaciones = {}; // {día: {línea: número}}
+let asignaciones = {};
 
 // ============ INICIO ============
 document.addEventListener('DOMContentLoaded', iniciar);
@@ -76,7 +75,6 @@ function actualizarSemanas() {
     
     select.innerHTML = '';
     
-    // Primer lunes del mes
     const primerDia = new Date(año, mes, 1);
     const diaSemana = primerDia.getDay();
     const ajuste = diaSemana === 0 ? -6 : 1 - diaSemana;
@@ -130,7 +128,7 @@ function dibujarCabecera() {
                 <div class="no-print mt-1">
                     <button onclick="toggleBloqueo(${i})" class="btn-accion">${linea.bloqueada ? '🔒' : '🔓'}</button>
                     ${linea.bloqueada ? `
-                        <select onchange="cambiarFijo(${i}, this.value)" class="text-xs border rounded p-1 bg-red-100">
+                        <select onchange="cambiarFijo(${i}, this.value)" class="select-fijo">
                             ${NUMEROS.map(n => `<option ${linea.fijo === n ? 'selected' : ''}>${n}</option>`).join('')}
                         </select>
                     ` : `
@@ -166,12 +164,10 @@ function dibujarCuerpo() {
 }
 
 function obtenerValor(dia, linea) {
-    // Valor guardado
     if (asignaciones[dia] && asignaciones[dia][linea]) {
         return asignaciones[dia][linea];
     }
     
-    // Línea bloqueada
     if (LINEAS[linea].bloqueada) {
         return LINEAS[linea].fijo;
     }
@@ -218,7 +214,6 @@ function generarAleatorio() {
         
         let disponibles = [...NUMEROS, ...NUMEROS];
         
-        // Quitar valores de líneas bloqueadas
         LINEAS.forEach((linea, l) => {
             if (linea.bloqueada) {
                 asignaciones[dia][l] = linea.fijo;
@@ -227,10 +222,8 @@ function generarAleatorio() {
             }
         });
         
-        // Mezclar
         disponibles.sort(() => Math.random() - 0.5);
         
-        // Asignar a líneas libres
         LINEAS.forEach((linea, l) => {
             if (!linea.bloqueada) {
                 asignaciones[dia][l] = disponibles.pop() || 1;
@@ -262,9 +255,17 @@ async function exportarPDF() {
     try {
         document.body.classList.add('is-exporting');
         
-        const canvas = await html2canvas(document.getElementById('zona-impresion'), {
+        const elemento = document.getElementById('zona-impresion');
+        
+        // Configuración especial para iOS
+        const canvas = await html2canvas(elemento, {
             scale: 2,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            windowWidth: elemento.scrollWidth,
+            windowHeight: elemento.scrollHeight
         });
         
         const { jsPDF } = window.jspdf;
@@ -280,7 +281,7 @@ async function exportarPDF() {
         document.body.classList.remove('is-exporting');
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al generar PDF');
+        alert('Error al generar PDF. Intenta de nuevo.');
         document.body.classList.remove('is-exporting');
     }
 }
@@ -289,20 +290,55 @@ async function exportarImagen() {
     try {
         document.body.classList.add('is-exporting');
         
-        const canvas = await html2canvas(document.getElementById('zona-impresion'), {
+        const elemento = document.getElementById('zona-impresion');
+        
+        // Configuración mejorada para iPhone
+        const canvas = await html2canvas(elemento, {
             scale: 2,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            windowWidth: elemento.scrollWidth,
+            windowHeight: elemento.scrollHeight,
+            onclone: (documento) => {
+                // Asegurar que la tabla se vea completa
+                const tablas = documento.querySelectorAll('.tabla-scroll');
+                tablas.forEach(tabla => {
+                    tabla.style.overflow = 'visible';
+                });
+                
+                const tablaPrincipal = documento.querySelector('.tabla-horarios');
+                if (tablaPrincipal) {
+                    tablaPrincipal.style.minWidth = 'auto';
+                    tablaPrincipal.style.width = '100%';
+                }
+            }
         });
         
-        const link = document.createElement('a');
-        link.download = `horarios_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+        // Crear blob para mejor compatibilidad
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `horarios_${Date.now()}.png`;
+            
+            // Para iOS Safari
+            if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                // Abrir en nueva pestaña
+                window.open(url, '_blank');
+            } else {
+                // Descarga normal
+                link.click();
+            }
+            
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        });
         
         document.body.classList.remove('is-exporting');
     } catch (error) {
         console.error('Error:', error);
-        alert('Error al generar imagen');
+        alert('Error al generar imagen. Intenta de nuevo.');
         document.body.classList.remove('is-exporting');
     }
 }
@@ -321,7 +357,7 @@ function guardar() {
     localStorage.setItem('horarios', JSON.stringify(datos));
 }
 
-// Event listeners para guardar automáticamente
+// Event listeners
 document.getElementById('anio').addEventListener('change', () => {
     actualizarSemanas();
     guardar();

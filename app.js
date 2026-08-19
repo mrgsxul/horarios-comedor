@@ -1,5 +1,5 @@
 // ============ DATOS ============
-const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const NUMEROS = [1, 2, 3, 4, 5, 6];
 
 const HORARIOS = {
@@ -119,7 +119,7 @@ function seleccionarFechaActual() {
             hoy.getMonth(),
             Number(opcion.value)
         );
-        return hoy >= rango.lunes && hoy <= rango.sabado;
+        return hoy >= rango.lunes && hoy <= rango.domingo;
     });
 
     if (objetivo) {
@@ -277,15 +277,15 @@ function actualizarSemanas() {
     const primerLunes = obtenerPrimerLunesDelMes(año, mes);
     let numero = 1;
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
         const lunes = new Date(primerLunes);
         lunes.setDate(primerLunes.getDate() + i * 7);
 
-        const sabado = new Date(lunes);
-        sabado.setDate(lunes.getDate() + 5);
+        const domingo = new Date(lunes);
+        domingo.setDate(lunes.getDate() + 6);
 
-        if (lunes.getMonth() === mes || sabado.getMonth() === mes) {
-            const texto = `Semana ${numero}: ${formatearFecha(lunes)} - ${formatearFecha(sabado)}`;
+        if (lunes.getMonth() === mes || domingo.getMonth() === mes) {
+                const texto = `Semana ${numero}: ${formatearFecha(lunes)} - ${formatearFecha(domingo)}`;
             select.add(new Option(texto, String(i)));
             numero++;
         }
@@ -307,13 +307,13 @@ function obtenerRangoSemanaPorIndice(año, mes, indice) {
     const lunes = new Date(primerLunes);
     lunes.setDate(primerLunes.getDate() + indice * 7);
 
-    const sabado = new Date(lunes);
-    sabado.setDate(lunes.getDate() + 5);
+const domingo = new Date(lunes);
+domingo.setDate(lunes.getDate() + 6);
 
-    lunes.setHours(0, 0, 0, 0);
-    sabado.setHours(23, 59, 59, 999);
+lunes.setHours(0, 0, 0, 0);
+domingo.setHours(23, 59, 59, 999);
 
-    return { lunes, sabado };
+return { lunes, domingo };
 }
 
 function formatearFecha(fecha) {

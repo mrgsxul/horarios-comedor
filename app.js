@@ -41,10 +41,14 @@ const LINEAS = [
     { nombre: "763", bloqueada: false, fijo: 4 }
 ];
 
+const STORAGE_KEY = "horarios";
+const STORAGE_VERSION = 4;
+
 let asignaciones = {};
 let periodos = {};
 let datosGuardado = {};
 let inicializando = true;
+let hayDatosGuardados = false;
 
 // ============ INICIO ============
 document.addEventListener("DOMContentLoaded", iniciar);
@@ -54,28 +58,28 @@ function iniciar() {
     configurarAños();
     configurarMeses();
 
-    if (datosGuardado.anio) document.getElementById("anio").value = String(datosGuardado.anio);
-    if (datosGuardado.mes !== undefined) document.getElementById("mes").value = String(datosGuardado.mes);
-    if (datosGuardado.turno) document.getElementById("turno").value = datosGuardado.turno;
+    // La fecha inicial siempre corresponde al día en que se abre la página.
+    seleccionarFechaActual();
 
-    actualizarSemanas();
-    const semanaGuardada = Number.isInteger(datosGuardado.semanaIndice)
-        ? datosGuardado.semanaIndice
-        : 0;
+    // Si este navegador ya tiene información guardada para la semana actual,
+    // se recupera exactamente esa información. Un navegador nuevo empieza vacío.
+    cargarPeriodoActual();
 
-    if (document.getElementById("semana").options.length) {
-        document.getElementById("semana").value =
-            String(Math.min(Math.max(semanaGuardada, 0), document.getElementById("semana").options.length - 1));
+    if (hayDatosGuardados && datosGuardado.turno) {
+        const turno = document.getElementById("turno");
+        if (Array.from(turno.options).some(op => op.value === datosGuardado.turno)) {
+            turno.value = datosGuardado.turno;
+        }
+    } else {
+        document.getElementById("turno").value = "";
     }
 
-    cargarPeriodoActual();
     actualizarTitulo();
     actualizarHorarioTurno();
     dibujarTabla();
     configurarEventos();
 
     inicializando = false;
-    guardar();
 }
 
 function configurarAños() {
@@ -86,10 +90,7 @@ function configurarAños() {
     for (let año = añoActual - 1; año <= añoActual + 5; año++) {
         select.add(new Option(String(año), String(año)));
     }
-
-    if (!select.value) {
-        select.value = String(añoActual);
-    }
+    select.value = String(añoActual);
 }
 
 function configurarMeses() {
@@ -100,39 +101,59 @@ function configurarMeses() {
 
     const select = document.getElementById("mes");
     select.innerHTML = "";
+    meses.forEach((mes, i) => select.add(new Option(mes, String(i))));
+    select.value = String(new Date().getMonth());
+}
 
-    meses.forEach((mes, i) => {
-        select.add(new Option(mes, String(i)));
+function seleccionarFechaActual() {
+    const hoy = new Date();
+    document.getElementById("anio").value = String(hoy.getFullYear());
+    document.getElementById("mes").value = String(hoy.getMonth());
+
+    actualizarSemanas();
+
+    const opciones = Array.from(document.getElementById("semana").options);
+    const objetivo = opciones.find(opcion => {
+        const rango = obtenerRangoSemanaPorIndice(
+            hoy.getFullYear(),
+            hoy.getMonth(),
+            Number(opcion.value)
+        );
+        return hoy >= rango.lunes && hoy <= rango.sabado;
     });
 
-    if (datosGuardado.mes === undefined || !select.value) {
-        select.value = String(new Date().getMonth());
+    if (objetivo) {
+        document.getElementById("semana").value = objetivo.value;
     }
 }
 
 // ============ PERSISTENCIA ============
 function cargarDatos() {
     datosGuardado = {};
+    periodos = {};
+    asignaciones = {};
+    hayDatosGuardados = false;
 
     try {
-        const guardado = localStorage.getItem("horarios");
+        const guardado = localStorage.getItem(STORAGE_KEY);
         if (!guardado) return;
 
         const datos = JSON.parse(guardado);
         if (!datos || typeof datos !== "object") return;
 
+        // Se acepta la estructura actual y también la estructura anterior
+        // para no perder horarios que el usuario ya tenía guardados.
         datosGuardado = datos;
         periodos = datos.periodos && typeof datos.periodos === "object"
             ? datos.periodos
             : {};
 
-        // Migración compatible con la versión anterior.
         if (Object.keys(periodos).length === 0 && datos.asignaciones) {
             const anio = datos.anio ?? new Date().getFullYear();
             const mes = datos.mes ?? new Date().getMonth();
             const semanaIndice = Number.isInteger(datos.semanaIndice) ? datos.semanaIndice : 0;
             periodos[crearClavePeriodo(anio, mes, semanaIndice)] = {
-                asignaciones: datos.asignaciones || {}
+                asignaciones: copiarAsignaciones(datos.asignaciones || {})
             };
         }
 
@@ -147,19 +168,22 @@ function cargarDatos() {
                 }
             });
         }
+
+        hayDatosGuardados = Object.keys(periodos).length > 0 || !!datos.turno;
     } catch (error) {
         console.error("Error al cargar datos:", error);
-        periodos = {};
         datosGuardado = {};
+        periodos = {};
+        asignaciones = {};
+        hayDatosGuardados = false;
     }
 }
 
 function guardar() {
     try {
         const selectSemana = document.getElementById("semana");
-
         const datos = {
-            version: 3,
+            version: STORAGE_VERSION,
             anio: document.getElementById("anio").value,
             mes: document.getElementById("mes").value,
             semanaIndice: Number(selectSemana.value || 0),
@@ -172,7 +196,9 @@ function guardar() {
             }))
         };
 
-        localStorage.setItem("horarios", JSON.stringify(datos));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(datos));
+        datosGuardado = datos;
+        hayDatosGuardados = true;
     } catch (error) {
         console.error("No se pudo guardar en localStorage:", error);
     }
@@ -204,7 +230,6 @@ function guardarPeriodoActual() {
 function copiarAsignaciones(origen) {
     return JSON.parse(JSON.stringify(origen || {}));
 }
-
 // ============ EVENTOS ============
 function configurarEventos() {
     document.getElementById("anio").addEventListener("change", () => {
@@ -229,8 +254,8 @@ function configurarEventos() {
         cargarPeriodoActual();
         actualizarTitulo();
         actualizarHorarioTurno();
-        dibujarTabla();
         guardar();
+        dibujarTabla();
     });
 
     document.getElementById("turno").addEventListener("change", () => {
@@ -249,11 +274,7 @@ function actualizarSemanas() {
     const valorAnterior = Number(select.value || 0);
     select.innerHTML = "";
 
-    const primerDia = new Date(año, mes, 1);
-    const diaSemana = primerDia.getDay();
-    const ajuste = diaSemana === 0 ? -6 : 1 - diaSemana;
-    const primerLunes = new Date(año, mes, 1 + ajuste);
-
+    const primerLunes = obtenerPrimerLunesDelMes(año, mes);
     let numero = 1;
 
     for (let i = 0; i < 6; i++) {
@@ -274,6 +295,27 @@ function actualizarSemanas() {
     select.value = opcionValida ? String(valorAnterior) : (select.options[0]?.value || "0");
 }
 
+function obtenerPrimerLunesDelMes(año, mes) {
+    const primerDia = new Date(año, mes, 1);
+    const diaSemana = primerDia.getDay();
+    const ajuste = diaSemana === 0 ? -6 : 1 - diaSemana;
+    return new Date(año, mes, 1 + ajuste);
+}
+
+function obtenerRangoSemanaPorIndice(año, mes, indice) {
+    const primerLunes = obtenerPrimerLunesDelMes(año, mes);
+    const lunes = new Date(primerLunes);
+    lunes.setDate(primerLunes.getDate() + indice * 7);
+
+    const sabado = new Date(lunes);
+    sabado.setDate(lunes.getDate() + 5);
+
+    lunes.setHours(0, 0, 0, 0);
+    sabado.setHours(23, 59, 59, 999);
+
+    return { lunes, sabado };
+}
+
 function formatearFecha(fecha) {
     return `${fecha.getDate()} ${fecha.toLocaleDateString("es-MX", { month: "short" })}`;
 }
@@ -286,13 +328,18 @@ function actualizarTitulo() {
     const semana = obtenerTextoSemana();
     const turno = document.getElementById("turno").value;
     document.getElementById("titulo").textContent =
-        `Horarios de Comedor | ${semana} | ${turno}`;
+        `Horarios de Comedor | ${semana} | ${turno || "Selecciona el turno"}`;
 }
 
 function actualizarHorarioTurno() {
     const turno = document.getElementById("turno").value;
     const horarios = HORARIOS[turno] || [];
     const contenedor = document.getElementById("horarios-turno");
+
+    if (!turno) {
+        contenedor.innerHTML = "";
+        return;
+    }
 
     contenedor.innerHTML = `
         <div class="horarios-turno-titulo">Horarios del ${escapeHtml(turno)}</div>
@@ -361,6 +408,7 @@ function dibujarCuerpo() {
                     <select class="select-horario"
                         aria-label="${dia}, línea ${escapeHtml(linea.nombre)}"
                         onchange="cambiarAsignacion(${d}, ${l}, this.value)">
+                        <option value="" ${valor === "" ? "selected" : ""}>—</option>
                         ${NUMEROS.map(n =>
                             `<option value="${n}" ${valor === n ? "selected" : ""}>${n}</option>`
                         ).join("")}
@@ -385,13 +433,23 @@ function obtenerValor(dia, linea) {
         return LINEAS[linea].fijo;
     }
 
-    return 1;
+    return "";
 }
 
 // ============ ACCIONES ============
 function cambiarAsignacion(dia, linea, valor) {
     if (!asignaciones[dia]) asignaciones[dia] = {};
-    asignaciones[dia][linea] = parseInt(valor, 10);
+
+    if (valor === "") {
+        delete asignaciones[dia][linea];
+
+        if (Object.keys(asignaciones[dia]).length === 0) {
+            delete asignaciones[dia];
+        }
+    } else {
+        asignaciones[dia][linea] = parseInt(valor, 10);
+    }
+
     guardarPeriodoActual();
     guardar();
 }
@@ -584,6 +642,10 @@ async function generarImagenBlob() {
 
         const dataUrl = await htmlToImage.toPng(clon, {
             backgroundColor: "#ffffff",
+            // Esta página usa únicamente fuentes del sistema.
+            // Evitamos que html-to-image intente leer cssRules de hojas
+            // CSS remotas y provoque errores CORS/SecurityError en consola.
+            fontEmbedCSS: "",
             pixelRatio: Math.min(Math.max(window.devicePixelRatio || 2, 2), 3),
             cacheBust: true,
             width: ancho,
@@ -614,20 +676,69 @@ function crearArchivoImagen(blob) {
     return new File([blob], nombre, { type: "image/png" });
 }
 
-async function compartirImagen() {
-    setLoading(true, "Generando imagen...");
+async function descargarImagen() {
+    if (!document.getElementById("turno").value) {
+        alert("Primero selecciona el TURNO para generar la imagen.");
+        return;
+    }
 
-    let archivo = null;
+    // Guardar el estado antes de generar el archivo para que pueda recuperarse
+    // incluso después de cerrar la página.
+    guardarPeriodoActual();
+    guardar();
+
+    setLoading(true, "Generando imagen...");
     let objectUrl = null;
 
     try {
         const blob = await generarImagenBlob();
-        archivo = crearArchivoImagen(blob);
+        const archivo = crearArchivoImagen(blob);
+        objectUrl = URL.createObjectURL(blob);
 
-        // En Android/iOS, la vía correcta para una imagen es compartir el archivo.
+        const enlace = document.createElement("a");
+        enlace.href = objectUrl;
+        enlace.download = archivo.name;
+        enlace.rel = "noopener";
+        document.body.appendChild(enlace);
+        enlace.click();
+        enlace.remove();
+
+        if (esSafariIOS()) {
+            setTimeout(() => {
+                try {
+                    window.open(objectUrl, "_blank", "noopener,noreferrer");
+                } catch (_) {}
+            }, 300);
+        }
+    } catch (error) {
+        console.error("Error al descargar imagen:", error);
+        alert("No se pudo descargar la imagen. Intenta de nuevo.");
+    } finally {
+        setLoading(false);
+        if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
+    }
+}
+
+async function compartirImagen() {
+    if (!document.getElementById("turno").value) {
+        alert("Primero selecciona el TURNO para generar la imagen.");
+        return;
+    }
+
+    // El acto de compartir confirma que el usuario ya terminó de preparar
+    // este horario; se deja guardado para recuperarlo posteriormente.
+    guardarPeriodoActual();
+    guardar();
+
+    setLoading(true, "Preparando imagen para compartir...");
+    let objectUrl = null;
+
+    try {
+        const blob = await generarImagenBlob();
+        const archivo = crearArchivoImagen(blob);
+
         if (navigator.share && navigator.canShare) {
             let puedeCompartirArchivo = false;
-
             try {
                 puedeCompartirArchivo = navigator.canShare({ files: [archivo] });
             } catch (_) {
@@ -644,8 +755,11 @@ async function compartirImagen() {
             }
         }
 
-        // Fallback de escritorio/Android cuando no hay Web Share con archivos.
+        // WhatsApp no ofrece desde una página web una API estándar para
+        // adjuntar automáticamente un PNG a un chat. Como alternativa:
+        // 1) descargamos la imagen, 2) abrimos WhatsApp con el texto listo.
         objectUrl = URL.createObjectURL(blob);
+
         const enlace = document.createElement("a");
         enlace.href = objectUrl;
         enlace.download = archivo.name;
@@ -654,45 +768,38 @@ async function compartirImagen() {
         enlace.click();
         enlace.remove();
 
-        // Safari/iOS puede ignorar download=. Abrimos la imagen como último recurso
-        // para que el usuario pueda usar "Guardar imagen" o "Añadir a Fotos".
-        if (esSafariIOS()) {
-            setTimeout(() => {
-                try {
-                    window.open(objectUrl, "_blank", "noopener,noreferrer");
-                } catch (_) {}
-            }, 250);
-        } else {
-            alert("✅ Imagen guardada.");
-        }
-    } catch (error) {
-        // Cancelar el panel de compartir no debe mostrar un falso error.
-        if (error?.name === "AbortError") return;
-
-        console.error("Error al compartir/guardar imagen:", error);
-        alert(
-            "No se pudo guardar la imagen automáticamente. " +
-            "Se abrirá una vista para guardarla manualmente."
+        const mensaje = encodeURIComponent(
+            `Horarios de Comedor - ${obtenerTextoSemana()} - ${document.getElementById("turno").value}`
         );
 
-        try {
-            const blob = await generarImagenBlob();
-            objectUrl = URL.createObjectURL(blob);
-            window.open(objectUrl, "_blank", "noopener,noreferrer");
-        } catch (fallbackError) {
-            console.error("Error en fallback de imagen:", fallbackError);
-            alert("No se pudo generar la imagen. Intenta de nuevo.");
-        }
+        setTimeout(() => {
+            try {
+                window.open(`https://wa.me/?text=${mensaje}`, "_blank", "noopener,noreferrer");
+            } catch (_) {}
+        }, 300);
+
+        alert("La imagen fue descargada. WhatsApp se abrirá con el texto listo; adjunta la imagen descargada al chat.");
+    } catch (error) {
+        if (error?.name === "AbortError") return;
+
+        console.error("Error al compartir imagen:", error);
+        alert("No se pudo compartir la imagen. Usa «Descargar imagen».");
     } finally {
-        if (objectUrl) {
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
-        }
         setLoading(false);
+        if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
     }
 }
 
 // ============ EXPORTAR PDF ============
 async function exportarPDF() {
+    if (!document.getElementById("turno").value) {
+        alert("Primero selecciona el TURNO para generar el PDF.");
+        return;
+    }
+
+    guardarPeriodoActual();
+    guardar();
+
     setLoading(true, "Generando PDF...");
     try {
         if (!window.jspdf?.jsPDF) {

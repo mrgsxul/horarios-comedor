@@ -38,6 +38,21 @@ select {
     margin-bottom: 10px;
 }
 
+.campo-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.campo-selector label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
 .grid-selectores select {
     padding: 8px;
     border: 1px solid #d1d5db;
@@ -79,6 +94,7 @@ select {
 .btn-azul { background: #2563eb; }
 .btn-verde { background: #16a34a; }
 .btn-rojo { background: #dc2626; }
+.btn-morado { background: #7c3aed; }
 
 .zona-horario {
     background: white;
@@ -191,6 +207,7 @@ th {
 }
 
 .horarios-turno {
+    display: none;
     border: 2px solid #1f2937;
     border-radius: 8px;
     padding: 12px;
@@ -322,5 +339,12 @@ th {
 }
 
 .exportando .horarios-turno {
+    display: block !important;
     break-inside: avoid;
+}
+@media (max-width: 600px) {
+    .botones .btn {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 0;
+    }
 }

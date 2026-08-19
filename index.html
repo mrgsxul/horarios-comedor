@@ -15,20 +15,34 @@
     <div class="container">
         <div class="panel-control">
             <div class="grid-selectores">
-                <select id="anio" aria-label="Año"></select>
-                <select id="mes" aria-label="Mes"></select>
-                <select id="semana" aria-label="Semana"></select>
-                <select id="turno" aria-label="Turno">
-                    <option value="1er Turno">1er Turno</option>
-                    <option value="2do Turno">2do Turno</option>
-                    <option value="3er Turno">3er Turno</option>
-                </select>
+                <div class="campo-selector">
+                    <label for="anio">AÑO</label>
+                    <select id="anio" aria-label="Año"></select>
+                </div>
+                <div class="campo-selector">
+                    <label for="mes">MES</label>
+                    <select id="mes" aria-label="Mes"></select>
+                </div>
+                <div class="campo-selector">
+                    <label for="semana">SEMANA / FECHA</label>
+                    <select id="semana" aria-label="Semana y fecha"></select>
+                </div>
+                <div class="campo-selector">
+                    <label for="turno">TURNO</label>
+                    <select id="turno" aria-label="Turno">
+                        <option value="">Selecciona un turno</option>
+                        <option value="1er Turno">1er Turno</option>
+                        <option value="2do Turno">2do Turno</option>
+                        <option value="3er Turno">3er Turno</option>
+                    </select>
+                </div>
             </div>
 
             <div class="botones">
-                <button type="button" onclick="generarAleatorio()" class="btn btn-azul">🎲 Barajar</button>
-                <button type="button" onclick="compartirImagen()" class="btn btn-verde">📤 COMPARTIR / GUARDAR</button>
-                <button type="button" onclick="exportarPDF()" class="btn btn-rojo">📄 PDF</button>
+                <button type="button" onclick="generarAleatorio()" class="btn btn-azul">🎲 Barajar horarios</button>
+                <button type="button" onclick="compartirImagen()" class="btn btn-verde">📲 WhatsApp / Compartir</button>
+                <button type="button" onclick="descargarImagen()" class="btn btn-morado">⬇️ Descargar imagen</button>
+                <button type="button" onclick="exportarPDF()" class="btn btn-rojo">📄 Descargar PDF</button>
             </div>
         </div>
 
